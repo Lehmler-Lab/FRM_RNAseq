@@ -6,7 +6,7 @@ output:
 ---
 
 ```{r}
-#BiocManager::install("Mus.musculus")
+BiocManager::install("GenomicFeatures")
 #BiocManager::install("enrichplot")
 #BiocManager::install("clusterProfiler")
 #BiocManager::install("scRNAseq")
@@ -33,6 +33,7 @@ library(RColorBrewer)
 library(expss)
 library(dplyr)
 library(BiocManager)
+library(RMariaDB)
 library(GenomicAlignments)
 library(BiocParallel)
 library(GenomicFeatures)
@@ -57,6 +58,7 @@ library(rstatix)
 library(scRNAseq)
 library(stringr)
 library(tibble)
+library(viridis)
 ```
 
 Set your working directory and pull in your reference genome to compare your samples to. We will read the gene model from an Ensembl GTF file. Be sure your gene model reflects the same model used in your samples. 
@@ -507,10 +509,67 @@ my_list<-list( "Germ Free Vehicle vs Wild Type Vehicle"= res1,
               "Germ Free 6 mg vs Germ Free Vehicle" = res8,
               "Germ Free 30 mg vs Germ Free 6 mg" = res9)
 
+
+my_list2<-list( "GFV_WTV"= res1,
+              "WT6_WTV"= res2,
+              "WT30_WTV"= res3,
+              "GF6_WT6"= res4,
+              "WT30_WT6"= res5,
+              "GF30_WT30"= res6,
+              "GF30_GFV" = res7,
+              "GF6_GFV" = res8,
+              "GF30_GF6" = res9)
 ```
 
 #for loop for Gene and kegg enrichment
+```{r}
+
+plot_list_enrich<- list()
+for (i in names(my_list2)) {
+    print(i)
+  x<- my_list2[[i]][order(my_list2[[i]]$log2FoldChange, decreasing = TRUE),] #reorder the genes based on significance
+gene_list<-x$log2FoldChange
+names(gene_list)<-x$entrez
+
+plot_list_enrich[[i]] <- gene_list
+}
+
+```
+
+
 #gene enrichment
+```{r}
+#inputList <- list(`0.1` = genes3, `1` = genes2,`6` = genes1 )
+STN_groups <- compareCluster(geneClusters=plot_list_enrich,  fun = "gseGO", OrgDb=org.Mm.eg.db, pvalueCutoff = 0.05, pAdjustMethod = "none")
+```
+
+
+```{r}
+#tiff(file = 'enrichment_figures/grouped_gene_enrichment.tiff', units="in", width=8, height=5, res=1000)
+dot36<-dotplot(STN_groups,showCategory=2, split=".sign") +
+  geom_point(shape = 1,colour = "black") +
+  scale_color_viridis(option = "inferno", direction = -1) +
+  facet_grid(.~.sign)+
+  theme(panel.spacing = unit(0.5, "cm",data = NULL), panel.grid.minor = element_blank())+
+  scale_y_discrete(labels = function(x) ifelse(str_detect(x, "gap"), "", str_wrap(x, width = 45)))+
+  theme(axis.text.y = element_text(size = 11), 
+        strip.background = element_blank(),
+        strip.text.x = element_text(size = 14),
+        axis.text.x = element_text(size = 14),
+        axis.title.x = element_blank(),
+        legend.text = element_text(size = 10),
+        legend.key.width= unit(0.3, 'cm'))  
+dot36
+#dev.off()
+#dot36
+```
+
+###KEGG
+```{r}
+STN_groups <- compareCluster(geneClusters=inputList,  fun = "gseKEGG", pvalueCutoff = 0.05, pAdjustMethod = "none")
+```
+
+
 ```{r}
 
 plot_list_enrich<- list()
