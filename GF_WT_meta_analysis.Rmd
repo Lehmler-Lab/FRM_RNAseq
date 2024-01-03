@@ -48,12 +48,15 @@ library(TxDb.Mmusculus.UCSC.mm10.knownGene)
 library(enrichplot)
 library(clusterProfiler)
 library(pathview)
+library(readr)
+#library(MuSiC2)
+library(ggpubr)
+library(ggsignif)
+library(rstatix)
+library(scRNAseq)
 library(VennDiagram)
 library(stringr)
 library(tibble)
-library(viridis)
-library(babelgene)
-library(DOSE)
 ```
 
 Set your working directory and pull in your reference genome to compare your samples to. We will read the gene model from an Ensembl GTF file. Be sure your gene model reflects the same model used in your samples. 
@@ -119,7 +122,8 @@ colData(se)<-DataFrame(info) #take the sample info and assign it as the metadata
 se$group<- as.factor(se$genotype) #organizing structure of groups
 se$group<- relevel(se$group, 
                            "WT") # tells the system which group is "control"
-se <- se[ rowSums(assay(se)) >= 10, ] #remove genes that have a total count less than 10, a good prefilter measure
+
+se1 <- se[ rowSums(assay(se)) >= 100, ] #remove genes that have a total count less than 10, a good prefilter measure
 ```
 
 #***Using DeSeq2***
@@ -325,7 +329,7 @@ kegg_organism = "mmu"
 kk <- gseKEGG(geneList     = gene_list,
                organism     = kegg_organism,
                nPerm        = 10000,
-               minGSSize    = 3,
+               minGSSize    = 30,
                maxGSSize    = 800,
                pvalueCutoff = 0.05,
                pAdjustMethod = "none",
@@ -337,10 +341,12 @@ kk@result$Description<- gsub(pattern = " - Mus musculus (house mouse)", replacem
 ```
 
 
+
+
 ```{r}
 
-tiff(file = 'enrichment_figures/GF_vs_WT_meta_KEGG_enrichment.tiff', units="in", width=10, height=6, res=1000)
-dot<-dotplot(kk, showCategory=12, split=".sign") +
+tiff(file = 'enrichment_figures/GF_vs_WT_meta_KEGG_enrichment.tiff', units="in", width=10, height=12, res=1000)
+dot<-dotplot(kk,showCategory=c(15), split=".sign") +
   geom_point(shape = 1,colour = "black") +
   scale_color_viridis(option = "inferno", direction = -1) +
   facet_grid(.~.sign)+
@@ -352,11 +358,12 @@ dot<-dotplot(kk, showCategory=12, split=".sign") +
         axis.text.x = element_text(size = 14),
         axis.title.x = element_blank(),
         legend.text = element_text(size = 10),
-        legend.key.width= unit(0.3, 'cm'))  
+        legend.key.width= unit(0.3, 'cm'))
 dot
 dev.off()
 dot
 ```
+
 
 ```{r}
 data<-data.frame(kk)
